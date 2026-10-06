@@ -126,6 +126,7 @@ export default function Page(){
    <Input name="paymentDate" label="Payment date" type="date" defaultValue={day()}/>
    <Field label="Payment method">
     <select name="method">
+     <option>Cash</option>
      <option>UPI</option>
      <option>Bank</option>
     </select>
