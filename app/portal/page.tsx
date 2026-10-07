@@ -71,6 +71,9 @@ type Account = {
   future: string;
   benefit: string;
   maturity_date: string;
+  locked_rate?: string | null;
+  totalReservedGrams?: string | null;
+  remainingReservedGrams?: string | null;
   rules: {
     type: string;
     formula: string;
@@ -82,6 +85,7 @@ type Account = {
     purity?: string;
     termsEn?: string;
     termsKn?: string;
+    makingTerms?: string;
   };
   instalments: Instalment[];
   payments: PaymentReceipt[];
@@ -265,7 +269,12 @@ export default function CustomerPortal() {
     if (!selectedAccount) return;
     setBusy(true);
     setError('');
-    setNotice('');
+    const isS4 = selectedAccount.rules.type === 'rate_booking' || selectedAccount.rules.formula === 'lower_rate';
+    if (isS4 && (!manualAmount || BigInt(manualAmount) < 5000n)) {
+      setError(lang === 'kn' ? 'ಕನಿಷ್ಠ ಠೇವಣಿ ಮೊತ್ತ ₹5,000 ಆಗಿರಬೇಕು' : 'Minimum deposit amount for Scheme 4 is ₹5,000');
+      setBusy(false);
+      return;
+    }
 
     try {
       const res = await fetch('/api/v1/customer-portal/pay-online', {
@@ -366,6 +375,12 @@ export default function CustomerPortal() {
     if (!selectedAccount) return;
     setBusy(true);
     setError('');
+    const isS4 = selectedAccount.rules.type === 'rate_booking' || selectedAccount.rules.formula === 'lower_rate';
+    if (isS4 && (!manualAmount || BigInt(manualAmount) < 5000n)) {
+      setError(lang === 'kn' ? 'ಕನಿಷ್ಠ ಠೇವಣಿ ಮೊತ್ತ ₹5,000 ಆಗಿರಬೇಕು' : 'Minimum deposit amount for Scheme 4 is ₹5,000');
+      setBusy(false);
+      return;
+    }
 
     try {
       const paiseAmount = (BigInt(manualAmount) * 100n).toString();
@@ -511,6 +526,9 @@ export default function CustomerPortal() {
   const currentAcc = selectedAccount || accounts[0];
   const paidCount = currentAcc ? currentAcc.instalments.filter(i => i.status === 'Paid').length : 0;
   const totalCount = currentAcc ? currentAcc.rules.count : 12;
+  const isScheme4 = Boolean(currentAcc && (currentAcc.rules.type === 'rate_booking' || currentAcc.rules.formula === 'lower_rate'));
+  const isScheme5 = Boolean(currentAcc && (currentAcc.rules.type === 'one_time' || currentAcc.rules.formula === 'locked_rate'));
+  const isScheme3 = Boolean(currentAcc && (currentAcc.scheme_name.toLowerCase().includes('making charges') || currentAcc.rules.makingTerms?.includes('25%')));
   const progressPct = totalCount ? Math.round((paidCount / totalCount) * 100) : 0;
 
   return (
@@ -604,67 +622,122 @@ export default function CustomerPortal() {
             {/* Financial Numbers Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16 }}>
               <div style={{ background: '#fff', padding: 12, borderRadius: 10, border: '1px solid #ebd9a8' }}>
-                <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t.totalPaid}</p>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  {isScheme4 ? (lang === 'kn' ? 'ಠೇವಣಿ ಮೊತ್ತ' : 'Total Deposited') : t.totalPaid}
+                </p>
                 <p style={{ fontSize: 22, fontWeight: 700, color: 'var(--primary)', marginTop: 4 }}>
                   {money(currentAcc.totalPaid)}
                 </p>
                 <p style={{ fontSize: 11, color: '#27ae60', fontWeight: 600 }}>
-                  ✓ {paidCount} of {totalCount} instalments
+                  {isScheme4 
+                    ? (paidCount > 0 ? (lang === 'kn' ? '✓ ದರ ಲಾಕ್ ಆಗಿದೆ' : '✓ Rate Locked') : (lang === 'kn' ? 'ಕನಿಷ್ಠ ₹5,000' : 'Min ₹5,000')) 
+                    : `✓ ${paidCount} of ${totalCount} instalments`}
                 </p>
               </div>
 
               <div style={{ background: '#fff', padding: 12, borderRadius: 10, border: '1px solid #ebd9a8' }}>
-                <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t.dueNow}</p>
-                <p style={{ fontSize: 22, fontWeight: 700, color: BigInt(currentAcc.dueNow) > 0n ? '#b8860b' : '#27ae60', marginTop: 4 }}>
-                  {money(currentAcc.dueNow)}
+                <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  {isScheme4 
+                    ? (paidCount > 0 ? (lang === 'kn' ? 'ಮೀಸಲು ಚಿನ್ನದ ತೂಕ' : 'Reserved Gold Weight') : (lang === 'kn' ? 'ಠೇವಣಿ ಬಾಕಿ' : 'Deposit Due'))
+                    : t.dueNow}
+                </p>
+                <p style={{ fontSize: 22, fontWeight: 700, color: isScheme4 ? (paidCount > 0 ? 'var(--primary)' : '#b8860b') : (BigInt(currentAcc.dueNow) > 0n ? '#b8860b' : '#27ae60'), marginTop: 4 }}>
+                  {isScheme4 ? (paidCount > 0 ? `${currentAcc.totalReservedGrams || '0.0000'} g` : '₹5,000+') : money(currentAcc.dueNow)}
                 </p>
                 <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                  {BigInt(currentAcc.dueNow) > 0n ? 'Payment due' : 'Current month paid'}
+                  {isScheme4 
+                    ? (paidCount > 0 ? (lang === 'kn' ? 'ಕಡಿಮೆ ದರದ ರಕ್ಷಣೆ' : 'Lower rate hedge') : (lang === 'kn' ? 'ಗರಿಷ್ಠ ಮಿತಿಯಿಲ್ಲ' : 'No upper limit'))
+                    : (BigInt(currentAcc.dueNow) > 0n ? 'Payment due' : 'Current month paid')}
                 </p>
               </div>
             </div>
 
-            {/* Progress Bar */}
+            {/* Progress / Scheme Status Bar */}
             <div style={{ marginTop: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 600 }}>
                 <span>{lang === 'kn' ? 'ಪ್ರಗತಿ' : 'Scheme Progress'}</span>
-                <span>{progressPct}% ({paidCount}/{totalCount})</span>
+                <span>{isScheme4 ? (paidCount > 0 ? '100% (Deposited)' : '0% (Pending)') : `${progressPct}% (${paidCount}/${totalCount})`}</span>
               </div>
               <div className="progress-bar-bg">
-                <div className="progress-bar-fill" style={{ width: `${progressPct}%` }} />
+                <div className="progress-bar-fill" style={{ width: `${isScheme4 ? (paidCount > 0 ? 100 : 0) : progressPct}%` }} />
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)' }}>
-                <span>Scheduled Remaining: {money(currentAcc.future)}</span>
-                <span>Bonus Benefit: +{money(currentAcc.benefit)}</span>
+                {isScheme4 ? (
+                  <>
+                    <span>{currentAcc.locked_rate ? `Locked Rate: ${money(currentAcc.locked_rate)}/g (22K)` : 'Rate locks on deposit date'}</span>
+                    <span style={{ color: '#27ae60' }}>Market Price Hedge</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Scheduled Remaining: {money(currentAcc.future)}</span>
+                    <span>Bonus Benefit: +{money(currentAcc.benefit)}</span>
+                  </>
+                )}
               </div>
             </div>
 
             {/* Action Buttons: Online vs Shop Cash */}
             <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {isScheme4 && paidCount === 0 && (
+                <div style={{ padding: 10, background: '#fff', borderRadius: 8, border: '1px solid #ebd9a8' }}>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
+                    {lang === 'kn' ? 'ತ್ವರಿತ ಠೇವಣಿ ಮೊತ್ತ ಆಯ್ಕೆಮಾಡಿ (ಕನಿಷ್ಠ ₹5,000):' : 'Choose quick deposit amount (Min ₹5,000):'}
+                  </p>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {[5000, 10000, 25000, 50000, 100000].map(amt => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => {
+                          setManualAmount(amt.toString());
+                          setShowOnlineModal(true);
+                        }}
+                        style={{
+                          padding: '4px 10px',
+                          fontSize: 12,
+                          borderRadius: 16,
+                          border: '1px solid #ebd9a8',
+                          background: '#fcfbf8',
+                          color: 'var(--primary)',
+                          cursor: 'pointer',
+                          fontWeight: 600
+                        }}
+                      >
+                        ₹{amt.toLocaleString('en-IN')}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <button 
                 className="btn btn-gold" 
                 onClick={() => {
-                  const defaultAmt = BigInt(currentAcc.dueNow) > 0n 
-                    ? (Number(currentAcc.dueNow) / 100).toString() 
-                    : (Number(currentAcc.rules.amount) / 100).toString();
+                  const defaultAmt = isScheme4 
+                    ? (BigInt(currentAcc.totalPaid) > 0n ? '5000' : '5000')
+                    : (BigInt(currentAcc.dueNow) > 0n 
+                      ? (Number(currentAcc.dueNow) / 100).toString() 
+                      : (Number(currentAcc.rules.amount) / 100).toString());
                   setManualAmount(defaultAmt);
                   setShowOnlineModal(true);
                 }}
               >
-                <CreditCard size={18} /> {t.payOnlineBtn}
+                <CreditCard size={18} /> {isScheme4 && paidCount === 0 ? (lang === 'kn' ? 'ಆನ್‌ಲೈನ್‌ ಠೇವಣಿ ಪಾವತಿಸಿ' : 'Pay Deposit Online (Razorpay)') : t.payOnlineBtn}
               </button>
 
               <button 
                 className="btn btn-secondary" 
                 onClick={() => {
-                  const defaultAmt = BigInt(currentAcc.dueNow) > 0n 
-                    ? (Number(currentAcc.dueNow) / 100).toString() 
-                    : (Number(currentAcc.rules.amount) / 100).toString();
+                  const defaultAmt = isScheme4 
+                    ? (BigInt(currentAcc.totalPaid) > 0n ? '5000' : '5000')
+                    : (BigInt(currentAcc.dueNow) > 0n 
+                      ? (Number(currentAcc.dueNow) / 100).toString() 
+                      : (Number(currentAcc.rules.amount) / 100).toString());
                   setManualAmount(defaultAmt);
                   setShowManualModal(true);
                 }}
               >
-                <Building size={18} /> {t.payAtShopBtn}
+                <Building size={18} /> {isScheme4 && paidCount === 0 ? (lang === 'kn' ? 'ಅಂಗಡಿಯಲ್ಲಿ ನಗದು ಠೇವಣಿ / ವರದಿ' : 'Pay Deposit at Shop (Cash) / Report') : t.payAtShopBtn}
               </button>
             </div>
           </div>
@@ -721,28 +794,91 @@ export default function CustomerPortal() {
                 <Sparkles size={18} color="var(--gold)" /> {t.howItWorks}
               </h3>
 
-              <div style={{ background: '#fcfbf8', border: '1px solid #ebd9a8', borderRadius: 8, padding: 14, marginBottom: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
-                  <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ಮಾಸಿಕ ಕಂತು' : 'Monthly Instalment'}</span>
-                  <strong>{money(currentAcc.rules.amount)}</strong>
+              {isScheme4 ? (
+                <div style={{ background: '#fcfbf8', border: '1px solid #ebd9a8', borderRadius: 8, padding: 14, marginBottom: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ಕನಿಷ್ಠ ಠೇವಣಿ' : 'Minimum Deposit'}</span>
+                    <strong>₹5,000 {lang === 'kn' ? '(ಗರಿಷ್ಠ ಮಿತಿಯಿಲ್ಲ)' : '(No upper limit)'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ಯೋಜನೆಯ ಅವಧಿ' : 'Scheme Duration'}</span>
+                    <strong>1 {lang === 'kn' ? 'ವರ್ಷ' : 'Year (12 Months)'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ದರ ನೋಂದಣಿ' : 'Rate Registration'}</span>
+                    <strong>{currentAcc.locked_rate ? `${money(currentAcc.locked_rate)}/g (22K)` : (lang === 'kn' ? 'ಪಾವತಿ ದಿನಾಂಕದಂದು ಲಾಕ್' : 'Locked on payment date')}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14, color: '#27ae60' }}>
+                    <span>{lang === 'kn' ? 'ಮಾರುಕಟ್ಟೆ ಏರಿಕೆಯ ರಕ್ಷಣೆ' : 'Rising Market Protection'}</span>
+                    <strong>{lang === 'kn' ? 'ಕಡಿಮೆ ಬುಕ್ ಮಾಡಿದ ದರ' : 'Lower booked rate'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14, color: '#27ae60' }}>
+                    <span>{lang === 'kn' ? 'ಮಾರುಕಟ್ಟೆ ಇಳಿಕೆಯ ರಕ್ಷಣೆ' : 'Falling Market Protection'}</span>
+                    <strong>{lang === 'kn' ? 'ಚಾಲ್ತಿಯಲ್ಲಿರುವ ಕಡಿಮೆ ದರ' : 'Prevailing lower rate'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 2px', fontSize: 14, fontWeight: 600, color: '#b8860b' }}>
+                    <span>{lang === 'kn' ? 'ಮರುಪಾವತಿ ನೀತಿ' : 'Refund Policy'}</span>
+                    <span>{lang === 'kn' ? 'ಕೇವಲ ಆಭರಣ ಖರೀದಿಗೆ ಮಾತ್ರ' : 'Strictly redeemable as jewellery'}</span>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
-                  <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ಒಟ್ಟು ಅವಧಿ' : 'Total Duration'}</span>
-                  <strong>{currentAcc.rules.durationMonths} {lang === 'kn' ? 'ತಿಂಗಳುಗಳು' : 'Months'} ({currentAcc.rules.count} {lang === 'kn' ? 'ಕಂತುಗಳು' : 'Instalments'})</strong>
+              ) : isScheme3 ? (
+                <div style={{ background: '#fcfbf8', border: '1px solid #ebd9a8', borderRadius: 8, padding: 14, marginBottom: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ಮಾಸಿಕ ಕಂತು' : 'Monthly Instalment'}</span>
+                    <strong>₹5,000 / {lang === 'kn' ? 'ತಿಂಗಳು' : 'month'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ಒಟ್ಟು ಅವಧಿ' : 'Total Duration'}</span>
+                    <strong>12 {lang === 'kn' ? 'ತಿಂಗಳುಗಳು' : 'Months (12 Instalments)'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14, color: '#27ae60' }}>
+                    <span>{lang === 'kn' ? 'ಪ್ರಮುಖ ಲಾಭ' : 'Primary Benefit'}</span>
+                    <strong>25% {lang === 'kn' ? 'ಮೇಕಿಂಗ್ ಚಾರ್ಜ್ ರಿಯಾಯಿತಿ' : 'Discount on Making Charges (MC)'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ಅನ್ವಯವಾಗುವ ಚಿನ್ನದ ದರ' : 'Applicable Gold Rate'}</span>
+                    <strong>{lang === 'kn' ? 'ವಿಮೋಚನೆಯ ದಿನದ ಲೈವ್ ದರ' : 'Live rate on redemption date'}</strong>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
-                  <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ನೀವು ಪಾವತಿಸುವ ಮೊತ್ತ' : 'Total You Pay'}</span>
-                  <strong>{money(BigInt(currentAcc.rules.amount) * BigInt(currentAcc.rules.count))}</strong>
+              ) : isScheme5 ? (
+                <div style={{ background: '#fcfbf8', border: '1px solid #ebd9a8', borderRadius: 8, padding: 14, marginBottom: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ಏಕಕಾಲೀನ ಠೇವಣಿ' : 'Single Lump-Sum Deposit'}</span>
+                    <strong>₹3,00,000</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ಯೋಜನೆಯ ಅವಧಿ' : 'Scheme Duration'}</span>
+                    <strong>1 {lang === 'kn' ? 'ವರ್ಷ' : 'Year (12 Months)'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14, color: '#27ae60' }}>
+                    <span>{lang === 'kn' ? 'ಪ್ರಮುಖ ಲಾಭ' : 'Primary Benefit'}</span>
+                    <strong>0% {lang === 'kn' ? 'ಮೇಕಿಂಗ್ ಚಾರ್ಜ್ + ಸಂರಕ್ಷಿತ ದರ' : 'Making Charges + Protected Gold Rate'}</strong>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14, color: '#27ae60' }}>
-                  <span>{lang === 'kn' ? 'ದೇವಿ ಜ್ಯುವೆಲ್ಲರ್ಸ್ ಬೋನಸ್' : 'Devi Jewellers Bonus'}</span>
-                  <strong>+{money(currentAcc.rules.benefit)}</strong>
+              ) : (
+                <div style={{ background: '#fcfbf8', border: '1px solid #ebd9a8', borderRadius: 8, padding: 14, marginBottom: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ಮಾಸಿಕ ಕಂತು' : 'Monthly Instalment'}</span>
+                    <strong>{money(currentAcc.rules.amount)}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ಒಟ್ಟು ಅವಧಿ' : 'Total Duration'}</span>
+                    <strong>{currentAcc.rules.durationMonths} {lang === 'kn' ? 'ತಿಂಗಳುಗಳು' : 'Months'} ({currentAcc.rules.count} {lang === 'kn' ? 'ಕಂತುಗಳು' : 'Instalments'})</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ನೀವು ಪಾವತಿಸುವ ಮೊತ್ತ' : 'Total You Pay'}</span>
+                    <strong>{money(BigInt(currentAcc.rules.amount) * BigInt(currentAcc.rules.count))}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14, color: '#27ae60' }}>
+                    <span>{lang === 'kn' ? 'ದೇವಿ ಜ್ಯುವೆಲ್ಲರ್ಸ್ ಬೋನಸ್' : 'Devi Jewellers Bonus'}</span>
+                    <strong>+{money(currentAcc.rules.benefit)}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 2px', fontSize: 15, fontWeight: 700, color: 'var(--primary)' }}>
+                    <span>{lang === 'kn' ? 'ಮೆಚ್ಯೂರಿಟಿ ಒಟ್ಟು ಮೌಲ್ಯ' : 'Maturity Jewellery Value'}</span>
+                    <span>{money(BigInt(currentAcc.rules.amount) * BigInt(currentAcc.rules.count) + BigInt(currentAcc.rules.benefit))}</span>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 2px', fontSize: 15, fontWeight: 700, color: 'var(--primary)' }}>
-                  <span>{lang === 'kn' ? 'ಮೆಚ್ಯೂರಿಟಿ ಒಟ್ಟು ಮೌಲ್ಯ' : 'Maturity Jewellery Value'}</span>
-                  <span>{money(BigInt(currentAcc.rules.amount) * BigInt(currentAcc.rules.count) + BigInt(currentAcc.rules.benefit))}</span>
-                </div>
-              </div>
+              )}
 
               {/* Terms in Selected Language */}
               <div style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text-muted)' }}>
@@ -937,15 +1073,42 @@ export default function CustomerPortal() {
               </div>
 
               <div className="input-group">
-                <label className="input-label">{lang === 'kn' ? 'ಪಾವತಿ ಮೊತ್ತ (₹)' : 'Instalment Amount (₹)'}</label>
+                <label className="input-label">
+                  {isScheme4 
+                    ? (lang === 'kn' ? 'ಠೇವಣಿ ಮೊತ್ತ (₹, ಕನಿಷ್ಠ ₹5,000 - ಗರಿಷ್ಠ ಮಿತಿಯಿಲ್ಲ)' : 'Enter Deposit Amount (₹, Min ₹5,000 - No upper limit)') 
+                    : (lang === 'kn' ? 'ಪಾವತಿ ಮೊತ್ತ (₹)' : 'Instalment Amount (₹)')}
+                </label>
                 <input 
                   type="number" 
                   className="text-input" 
                   value={manualAmount} 
                   onChange={(e) => setManualAmount(e.target.value)}
-                  min="10"
+                  min={isScheme4 ? "5000" : "10"}
                   required
                 />
+                {isScheme4 && (
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                    {[5000, 10000, 25000, 50000, 100000].map(amt => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setManualAmount(amt.toString())}
+                        style={{
+                          padding: '4px 10px',
+                          fontSize: 12,
+                          borderRadius: 16,
+                          border: '1px solid #ebd9a8',
+                          background: manualAmount === amt.toString() ? 'var(--primary)' : '#fff',
+                          color: manualAmount === amt.toString() ? '#fff' : 'var(--primary)',
+                          cursor: 'pointer',
+                          fontWeight: 600
+                        }}
+                      >
+                        ₹{amt.toLocaleString('en-IN')}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div style={{ padding: 12, background: '#fcfbf8', borderRadius: 8, border: '1px solid #ebd9a8', marginBottom: 16 }}>
@@ -1019,15 +1182,42 @@ export default function CustomerPortal() {
 
               {/* Amount */}
               <div className="input-group">
-                <label className="input-label">{lang === 'kn' ? 'ಪಾವತಿಸಿದ ಮೊತ್ತ (₹)' : 'Amount Paid (₹)'}</label>
+                <label className="input-label">
+                  {isScheme4 
+                    ? (lang === 'kn' ? 'ಠೇವಣಿ ಮೊತ್ತ (₹, ಕನಿಷ್ಠ ₹5,000 - ಗರಿಷ್ಠ ಮಿತಿಯಿಲ್ಲ)' : 'Enter Deposit Amount (₹, Min ₹5,000 - No upper limit)') 
+                    : (lang === 'kn' ? 'ಪಾವತಿಸಿದ ಮೊತ್ತ (₹)' : 'Amount Paid (₹)')}
+                </label>
                 <input 
                   type="number" 
                   className="text-input" 
                   value={manualAmount} 
                   onChange={(e) => setManualAmount(e.target.value)}
-                  min="1"
+                  min={isScheme4 ? "5000" : "1"}
                   required
                 />
+                {isScheme4 && (
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                    {[5000, 10000, 25000, 50000, 100000].map(amt => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setManualAmount(amt.toString())}
+                        style={{
+                          padding: '4px 10px',
+                          fontSize: 12,
+                          borderRadius: 16,
+                          border: '1px solid #ebd9a8',
+                          background: manualAmount === amt.toString() ? 'var(--primary)' : '#fff',
+                          color: manualAmount === amt.toString() ? '#fff' : 'var(--primary)',
+                          cursor: 'pointer',
+                          fontWeight: 600
+                        }}
+                      >
+                        ₹{amt.toLocaleString('en-IN')}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Date */}
@@ -1046,16 +1236,15 @@ export default function CustomerPortal() {
               <div className="input-group">
                 <label className="input-label">
                   {manualMethod === 'Cash' 
-                    ? (lang === 'kn' ? 'ಉಲ್ಲೇಖ / ಕೌಂಟರ್ ವಿವರ' : 'Reference / Cash Counter Details')
-                    : (lang === 'kn' ? 'ಯುಪಿಐ ರೆಫರೆನ್ಸ್ ಸಂಖ್ಯೆ (UTR / Ref)' : 'UPI Transaction ID / UTR Number')}
+                    ? (lang === 'kn' ? 'ಉಲ್ಲೇಖ / ಕೌಂಟರ್ ವಿವರ (ಐಚ್ಛಿಕ)' : 'Reference / Cash Counter Details (Optional)')
+                    : (lang === 'kn' ? 'ಯುಪಿಐ ರೆಫರೆನ್ಸ್ ಸಂಖ್ಯೆ (UTR / Ref - ಐಚ್ಛಿಕ)' : 'UPI Transaction ID / UTR Number (Optional)')}
                 </label>
                 <input 
                   type="text" 
                   className="text-input" 
                   value={manualRef} 
                   onChange={(e) => setManualRef(e.target.value)}
-                  placeholder={manualMethod === 'Cash' ? 'e.g. Paid at shop counter' : 'e.g. 12-digit UTR number'}
-                  required
+                  placeholder={manualMethod === 'Cash' ? 'e.g. Paid at shop counter' : 'e.g. 12-digit UTR number (optional)'}
                 />
               </div>
 
