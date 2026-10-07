@@ -50,6 +50,9 @@ type PaymentReceipt = {
   reference?: string;
   receipt_id: string;
   receipt_number: string;
+  reserved_grams?: string | null;
+  rate_paise_per_gram?: string | null;
+  purity?: string | null;
 };
 
 type PaymentProof = {
@@ -74,6 +77,11 @@ type Account = {
   locked_rate?: string | null;
   totalReservedGrams?: string | null;
   remainingReservedGrams?: string | null;
+  scheduledGoldGrams?: string | null;
+  scheduledTotal?: string;
+  goldGramsLabel?: string;
+  goldGramsLabelKn?: string;
+  todayRate?: { id: string; purity: string; paise_per_gram: string; effective_at: string; notes?: string } | null;
   rules: {
     type: string;
     formula: string;
@@ -529,6 +537,8 @@ export default function CustomerPortal() {
   const isScheme4 = Boolean(currentAcc && (currentAcc.rules.type === 'rate_booking' || currentAcc.rules.formula === 'lower_rate'));
   const isScheme5 = Boolean(currentAcc && (currentAcc.rules.type === 'one_time' || currentAcc.rules.formula === 'locked_rate'));
   const isScheme3 = Boolean(currentAcc && (currentAcc.scheme_name.toLowerCase().includes('making charges') || currentAcc.rules.makingTerms?.includes('25%')));
+  const isScheme1 = Boolean(currentAcc && (currentAcc.scheme_name.toLowerCase().includes('adrushta') || currentAcc.scheme_name.toLowerCase().includes('lucky draw')));
+  const isScheme2 = Boolean(currentAcc && !isScheme1 && !isScheme3 && !isScheme4 && !isScheme5);
   const progressPct = totalCount ? Math.round((paidCount / totalCount) * 100) : 0;
 
   return (
@@ -649,6 +659,44 @@ export default function CustomerPortal() {
                     ? (paidCount > 0 ? (lang === 'kn' ? 'ಕಡಿಮೆ ದರದ ರಕ್ಷಣೆ' : 'Lower rate hedge') : (lang === 'kn' ? 'ಗರಿಷ್ಠ ಮಿತಿಯಿಲ್ಲ' : 'No upper limit'))
                     : (BigInt(currentAcc.dueNow) > 0n ? 'Payment due' : 'Current month paid')}
                 </p>
+              </div>
+            </div>
+
+            {/* Gold Quantity Highlight Tile (Displayed for ALL schemes) */}
+            <div style={{
+              marginTop: 12,
+              background: 'linear-gradient(135deg, #fdfbf7 0%, #f7f1e5 100%)',
+              border: '1.5px solid #d4af37',
+              borderRadius: 10,
+              padding: '12px 14px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 16 }}>⚖️</span>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: '#193c34', margin: 0 }}>
+                    {lang === 'kn' ? (currentAcc.goldGramsLabelKn || 'ಚಿನ್ನದ ಪ್ರಮಾಣ') : (currentAcc.goldGramsLabel || 'Gold Quantity')}
+                  </p>
+                </div>
+                <p style={{ fontSize: 11, color: '#6d5d36', margin: '3px 0 0' }}>
+                  {isScheme4
+                    ? (lang === 'kn' ? 'ಬುಕ್ ಮಾಡಿದ ದರದಲ್ಲಿ ಸೂಚಿತ ತೂಕ (ಕಡಿಮೆ ದರದ ರಕ್ಷಣೆ)' : 'Indicative weight at booked rate (Market hedge)')
+                    : isScheme5
+                    ? (lang === 'kn' ? 'ನಿಗದಿತ ದರದಲ್ಲಿ ಲಾಕ್ ಆದ ತೂಕ (0% ಮೇಕಿಂಗ್ ಚಾರ್ಜ್)' : 'Locked rate weight (0% Making Charges)')
+                    : (lang === 'kn' ? 'ಇಂದಿನ 22K ದರದ ಪ್ರಕಾರ ತತ್ಸಮಾನ ತೂಕ' : "Equivalent weight at today's 22K rate")}
+                </p>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ fontSize: 22, fontWeight: 800, color: '#84612a', margin: 0, fontFamily: 'serif' }}>
+                  {currentAcc.totalReservedGrams || '0.0000'} g
+                </p>
+                {currentAcc.scheduledGoldGrams && (
+                  <p style={{ fontSize: 10, color: '#888', margin: '2px 0 0' }}>
+                    {lang === 'kn' ? `ಗುರಿ: ${currentAcc.scheduledGoldGrams} g` : `Target: ${currentAcc.scheduledGoldGrams} g`}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -829,7 +877,7 @@ export default function CustomerPortal() {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
                     <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ಒಟ್ಟು ಅವಧಿ' : 'Total Duration'}</span>
-                    <strong>12 {lang === 'kn' ? 'ತಿಂಗಳುಗಳು' : 'Months (12 Instalments)'}</strong>
+                    <strong>12 {lang === 'kn' ? 'ತಿಂಗಳುಗಳು (12 ಕಂತುಗಳು)' : 'Months (12 Instalments)'}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14, color: '#27ae60' }}>
                     <span>{lang === 'kn' ? 'ಪ್ರಮುಖ ಲಾಭ' : 'Primary Benefit'}</span>
@@ -838,6 +886,10 @@ export default function CustomerPortal() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
                     <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ಅನ್ವಯವಾಗುವ ಚಿನ್ನದ ದರ' : 'Applicable Gold Rate'}</span>
                     <strong>{lang === 'kn' ? 'ವಿಮೋಚನೆಯ ದಿನದ ಲೈವ್ ದರ' : 'Live rate on redemption date'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ಚಿನ್ನದ ಪ್ರಮಾಣ (22K)' : 'Gold Quantity (22K)'}</span>
+                    <strong>{currentAcc.totalReservedGrams || '0.0000'} g</strong>
                   </div>
                 </div>
               ) : isScheme5 ? (
@@ -848,34 +900,61 @@ export default function CustomerPortal() {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
                     <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ಯೋಜನೆಯ ಅವಧಿ' : 'Scheme Duration'}</span>
-                    <strong>1 {lang === 'kn' ? 'ವರ್ಷ' : 'Year (12 Months)'}</strong>
+                    <strong>1 {lang === 'kn' ? 'ವರ್ಷ (12 ತಿಂಗಳು)' : 'Year (12 Months)'}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14, color: '#27ae60' }}>
                     <span>{lang === 'kn' ? 'ಪ್ರಮುಖ ಲಾಭ' : 'Primary Benefit'}</span>
                     <strong>0% {lang === 'kn' ? 'ಮೇಕಿಂಗ್ ಚಾರ್ಜ್ + ಸಂರಕ್ಷಿತ ದರ' : 'Making Charges + Protected Gold Rate'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ಕಾಯ್ದಿರಿಸಿದ ಚಿನ್ನದ ತೂಕ' : 'Reserved Gold Weight'}</span>
+                    <strong>{currentAcc.totalReservedGrams || '0.0000'} g</strong>
+                  </div>
+                </div>
+              ) : isScheme1 ? (
+                <div style={{ background: '#fcfbf8', border: '1px solid #ebd9a8', borderRadius: 8, padding: 14, marginBottom: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ಮಾಸಿಕ ಕಂತು' : 'Monthly Instalment'}</span>
+                    <strong>₹1,000 / {lang === 'kn' ? 'ತಿಂಗಳು (ಒಟ್ಟು 12 ತಿಂಗಳು)' : 'month (12 Months)'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ಪಾವತಿ ಅಂತಿಮ ದಿನಾಂಕ' : 'Due Date'}</span>
+                    <strong>{lang === 'kn' ? 'ಪ್ರತಿ ತಿಂಗಳ 10ನೇ ತಾರೀಖಿನೊಳಗೆ' : 'On or before 10th of every month'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14, color: '#27ae60' }}>
+                    <span>{lang === 'kn' ? 'ಮಾಸಿಕ ಲಕ್ಕಿ ಡ್ರಾ' : 'Monthly Lucky Draw'}</span>
+                    <strong>{lang === 'kn' ? 'ಪ್ರತಿ ತಿಂಗಳು ಲಕ್ಕಿ ಡ್ರಾ ಸೌಲಭ್ಯ' : 'Draw held every month'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14, color: '#27ae60' }}>
+                    <span>{lang === 'kn' ? 'ವಿಜೇತರ ಸೌಲಭ್ಯ' : 'Draw Winner Benefit'}</span>
+                    <span>{lang === 'kn' ? 'ತಕ್ಷಣ ಆಭರಣ + ಮುಂದಿನ ಕಂತು ಮನ್ನಾ' : 'Jewellery immediately + Future dues waived'}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ಚಿನ್ನದ ಪ್ರಮಾಣ (22K)' : 'Gold Quantity (22K)'}</span>
+                    <strong>{currentAcc.totalReservedGrams || '0.0000'} g</strong>
                   </div>
                 </div>
               ) : (
                 <div style={{ background: '#fcfbf8', border: '1px solid #ebd9a8', borderRadius: 8, padding: 14, marginBottom: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
                     <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ಮಾಸಿಕ ಕಂತು' : 'Monthly Instalment'}</span>
-                    <strong>{money(currentAcc.rules.amount)}</strong>
+                    <strong>₹500 / {lang === 'kn' ? 'ತಿಂಗಳು (ಅಥವಾ ₹500ರ ಗುಣಕಗಳು)' : 'month (or multiples of ₹500)'}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
                     <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ಒಟ್ಟು ಅವಧಿ' : 'Total Duration'}</span>
-                    <strong>{currentAcc.rules.durationMonths} {lang === 'kn' ? 'ತಿಂಗಳುಗಳು' : 'Months'} ({currentAcc.rules.count} {lang === 'kn' ? 'ಕಂತುಗಳು' : 'Instalments'})</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
-                    <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ನೀವು ಪಾವತಿಸುವ ಮೊತ್ತ' : 'Total You Pay'}</span>
-                    <strong>{money(BigInt(currentAcc.rules.amount) * BigInt(currentAcc.rules.count))}</strong>
+                    <strong>12 {lang === 'kn' ? 'ತಿಂಗಳುಗಳು (12 ಕಂತುಗಳು)' : 'Months (12 Instalments)'}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14, color: '#27ae60' }}>
-                    <span>{lang === 'kn' ? 'ದೇವಿ ಜ್ಯುವೆಲ್ಲರ್ಸ್ ಬೋನಸ್' : 'Devi Jewellers Bonus'}</span>
-                    <strong>+{money(currentAcc.rules.benefit)}</strong>
+                    <span>{lang === 'kn' ? 'ಸ್ಥಿರ ಬೋನಸ್ ಲಾಭ' : 'Fixed Bonus Incentive'}</span>
+                    <strong>+{money(currentAcc.rules.benefit || '50000')}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ಚಿನ್ನದ ಪ್ರಮಾಣ (22K)' : 'Gold Quantity (22K)'}</span>
+                    <strong>{currentAcc.totalReservedGrams || '0.0000'} g</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 2px', fontSize: 15, fontWeight: 700, color: 'var(--primary)' }}>
-                    <span>{lang === 'kn' ? 'ಮೆಚ್ಯೂರಿಟಿ ಒಟ್ಟು ಮೌಲ್ಯ' : 'Maturity Jewellery Value'}</span>
-                    <span>{money(BigInt(currentAcc.rules.amount) * BigInt(currentAcc.rules.count) + BigInt(currentAcc.rules.benefit))}</span>
+                    <span>{lang === 'kn' ? 'ಮೆಚ್ಯೂರಿಟಿ ಒಟ್ಟು ಖರೀದಿ ಮೌಲ್ಯ' : 'Total Purchasing Value'}</span>
+                    <span>{money(BigInt(currentAcc.scheduledTotal || '600000') + BigInt(currentAcc.rules.benefit || '50000'))}</span>
                   </div>
                 </div>
               )}
@@ -910,6 +989,8 @@ export default function CustomerPortal() {
                 {currentAcc.instalments.map((inst) => {
                   const isPaid = inst.status === 'Paid';
                   const isDue = inst.status === 'Due' || inst.status === 'Overdue';
+                  const rateVal = currentAcc.locked_rate ? Number(currentAcc.locked_rate) : (currentAcc.todayRate ? Number(currentAcc.todayRate.paise_per_gram) : 1200000);
+                  const instGrams = rateVal > 0 ? (Number(inst.amount) / rateVal).toFixed(4) : null;
                   return (
                     <div 
                       key={inst.id} 
@@ -920,6 +1001,11 @@ export default function CustomerPortal() {
                       <div style={{ fontSize: 11, marginTop: 4 }}>
                         {isPaid ? '✓ ' + money(inst.paid) : isDue ? 'Due' : money(inst.amount)}
                       </div>
+                      {instGrams && (
+                        <div style={{ fontSize: 9, opacity: 0.85, marginTop: 2 }}>
+                          {instGrams}g
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -927,7 +1013,10 @@ export default function CustomerPortal() {
 
               {/* Detailed Instalments List */}
               <div style={{ marginTop: 16 }}>
-                {currentAcc.instalments.map((inst) => (
+                {currentAcc.instalments.map((inst) => {
+                  const rateVal = currentAcc.locked_rate ? Number(currentAcc.locked_rate) : (currentAcc.todayRate ? Number(currentAcc.todayRate.paise_per_gram) : 1200000);
+                  const instGrams = rateVal > 0 ? (Number(inst.amount) / rateVal).toFixed(4) : null;
+                  return (
                   <div 
                     key={inst.id}
                     style={{
@@ -942,6 +1031,7 @@ export default function CustomerPortal() {
                     <div>
                       <strong>Instalment #{inst.seq}</strong>
                       <span style={{ color: 'var(--text-muted)', marginLeft: 8 }}>Due: {inst.due}</span>
+                      {instGrams && <span style={{ color: '#84612a', marginLeft: 8, fontSize: 12 }}>⚖️ ~{instGrams}g</span>}
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <span className={`badge ${inst.status === 'Paid' ? 'badge-green' : inst.status === 'Due' || inst.status === 'Overdue' ? 'badge-gold' : 'badge-blue'}`}>
@@ -949,7 +1039,7 @@ export default function CustomerPortal() {
                       </span>
                     </div>
                   </div>
-                ))}
+                );})}
               </div>
             </div>
           )}
@@ -974,6 +1064,11 @@ export default function CustomerPortal() {
                       <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
                         {p.payment_date} · {p.method} {p.reference ? `(${p.reference})` : ''}
                       </p>
+                      {p.reserved_grams && Number(p.reserved_grams) > 0 ? (
+                        <p style={{ fontSize: 12, color: '#84612a', fontWeight: 600, marginTop: 3 }}>
+                          ⚖️ {p.reserved_grams} g gold {p.rate_paise_per_gram ? `@ ${money(p.rate_paise_per_gram)}/g (${p.purity || '22K'})` : ''}
+                        </p>
+                      ) : null}
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <strong style={{ fontSize: 16, color: '#27ae60' }}>{money(p.amount)}</strong>
@@ -1000,6 +1095,9 @@ export default function CustomerPortal() {
                         </a>
                         <a 
                           href={`/api/v1/customer-portal/receipts/${p.receipt_id}?token=${encodeURIComponent(token)}&download=1`} 
+                          download={`Receipt-${(p.receipt_number || '').replace(/[^a-zA-Z0-9_-]/g, '_')}.html`} 
+                          target="_blank" 
+                          rel="noreferrer" 
                           style={{
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -1236,34 +1334,16 @@ export default function CustomerPortal() {
               <div className="input-group">
                 <label className="input-label">
                   {manualMethod === 'Cash' 
-                    ? (lang === 'kn' ? 'ಉಲ್ಲೇಖ / ಕೌಂಟರ್ ವಿವರ (ಐಚ್ಛಿಕ)' : 'Reference / Cash Counter Details (Optional)')
-                    : (lang === 'kn' ? 'ಯುಪಿಐ ರೆಫರೆನ್ಸ್ ಸಂಖ್ಯೆ (UTR / Ref - ಐಚ್ಛಿಕ)' : 'UPI Transaction ID / UTR Number (Optional)')}
+                    ? (lang === 'kn' ? 'ಉಲ್ಲೇಖ / ಕೌಂಟರ್ ವಿವರ (ಐಚ್ಛಿಕ)' : 'Reference / Counter Details (Optional)')
+                    : (lang === 'kn' ? 'ಯುಪಿಐ / ಬ್ಯಾಂಕ್ UTR ರೆಫರೆನ್ಸ್ ಸಂಖ್ಯೆ (ಐಚ್ಛಿಕ — ಕಡ್ಡಾಯವಲ್ಲ)' : 'UPI / Bank UTR Number (Optional — not compulsory)')}
                 </label>
                 <input 
                   type="text" 
                   className="text-input" 
                   value={manualRef} 
                   onChange={(e) => setManualRef(e.target.value)}
-                  placeholder={manualMethod === 'Cash' ? 'e.g. Paid at shop counter' : 'e.g. 12-digit UTR number (optional)'}
+                  placeholder={manualMethod === 'Cash' ? 'e.g. Paid at shop counter' : (lang === 'kn' ? 'ಐಚ್ಛಿಕ — ಕಡ್ಡಾಯವಲ್ಲ' : 'Optional — not required')}
                 />
-              </div>
-
-              {/* Optional Screenshot */}
-              <div className="input-group">
-                <label className="input-label">
-                  {lang === 'kn' ? 'ರಸೀದಿ ಅಥವಾ ಸ್ಕ್ರೀನ್‌ಶಾಟ್ ಫೋಟೋ (ಐಚ್ಛಿಕ)' : 'Upload Slip or Screenshot (Optional)'}
-                </label>
-                <input 
-                  type="file" 
-                  accept="image/png, image/jpeg" 
-                  onChange={handleImageUpload}
-                  style={{ fontSize: 13 }}
-                />
-                {manualImage && (
-                  <p style={{ fontSize: 12, color: '#27ae60', marginTop: 4 }}>
-                    ✓ Screenshot attached
-                  </p>
-                )}
               </div>
 
               {/* Note */}
