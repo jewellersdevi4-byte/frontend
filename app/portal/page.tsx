@@ -317,8 +317,7 @@ export default function CustomerPortal() {
         });
         rzp.open();
       } else {
-        // Test simulator / Direct complete
-        await confirmOnlinePayment(data.linkId, 'pay_online_' + Math.random().toString(36).substring(2, 9));
+        throw new Error('Razorpay payment gateway is unavailable. Please refresh or pay at the shop counter.');
       }
     } catch (err: any) {
       setError(err.message);
@@ -487,28 +486,7 @@ export default function CustomerPortal() {
             </button>
           </form>
 
-          {/* Quick Demo Assist */}
-          <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border-light)', textAlign: 'center' }}>
-            <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-              {lang === 'kn' ? 'ಡೆಮೊ ಪರೀಕ್ಷೆಗೆ ಬಳಸಿ:' : 'Quick test with verified customer:'}
-            </p>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 8 }}>
-              <button 
-                type="button" 
-                onClick={() => { setLoginInput('DJ-C-1001'); handleDirectLogin('DJ-C-1001'); }}
-                style={{ padding: '6px 12px', fontSize: 12, background: '#f5f5f0', border: '1px solid #ddd', borderRadius: 6, cursor: 'pointer' }}
-              >
-                DJ-C-1001
-              </button>
-              <button 
-                type="button" 
-                onClick={() => { setLoginInput('7892490633'); handleDirectLogin('7892490633'); }}
-                style={{ padding: '6px 12px', fontSize: 12, background: '#f5f5f0', border: '1px solid #ddd', borderRadius: 6, cursor: 'pointer' }}
-              >
-                7892490633
-              </button>
-            </div>
-          </div>
+
         </div>
 
         {/* Trust Badges Footer */}
@@ -863,9 +841,9 @@ export default function CustomerPortal() {
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <strong style={{ fontSize: 16, color: '#27ae60' }}>{money(p.amount)}</strong>
-                      <div style={{ marginTop: 4 }}>
+                      <div style={{ marginTop: 6, display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                         <a 
-                          href={`/api/v1/customer-portal/receipts/${p.receipt_id}`} 
+                          href={`/api/v1/customer-portal/receipts/${p.receipt_id}?token=${encodeURIComponent(token)}`} 
                           target="_blank" 
                           rel="noreferrer"
                           style={{
@@ -873,12 +851,33 @@ export default function CustomerPortal() {
                             alignItems: 'center',
                             gap: 4,
                             fontSize: 12,
+                            padding: '4px 8px',
+                            background: '#eef3eb',
+                            border: '1px solid #c7d8c1',
+                            borderRadius: 6,
                             color: 'var(--primary)',
                             fontWeight: 600,
                             textDecoration: 'none'
                           }}
                         >
-                          <Download size={13} /> {t.viewReceipt}
+                          <Receipt size={13} /> {t.viewReceipt}
+                        </a>
+                        <a 
+                          href={`/api/v1/customer-portal/receipts/${p.receipt_id}?token=${encodeURIComponent(token)}&download=1`} 
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            fontSize: 12,
+                            padding: '4px 8px',
+                            background: 'var(--primary)',
+                            borderRadius: 6,
+                            color: '#fff',
+                            fontWeight: 600,
+                            textDecoration: 'none'
+                          }}
+                        >
+                          <Download size={13} /> {lang === 'kn' ? 'ಡೌನ್‌ಲೋಡ್' : 'Download'}
                         </a>
                       </div>
                     </div>

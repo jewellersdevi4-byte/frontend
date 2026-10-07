@@ -131,27 +131,6 @@ export default function PayPage() {
     }
   }
 
-  async function handleTestPay() {
-    if (!data) return;
-    setPaying(true);
-    setError('');
-    try {
-      const res = await fetch('/api/v1/razorpay/test-pay', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ linkId: data.linkId }),
-      });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error || 'Simulated payment failed');
-      setPaid(true);
-      setPaymentResult(body);
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setPaying(false);
-    }
-  }
-
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f4ee', fontFamily: 'Arial, sans-serif' }}>
@@ -263,23 +242,7 @@ export default function PayPage() {
               {paying ? 'Processing…' : <>Pay with Razorpay <ArrowRight size={16} /></>}
             </button>
 
-            <button
-              onClick={handleTestPay}
-              disabled={paying}
-              style={{
-                width: '100%',
-                background: '#f5f4ee',
-                color: '#715b30',
-                border: '1px solid #ddd2b9',
-                borderRadius: 6,
-                padding: '12px',
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: paying ? 'wait' : 'pointer',
-              }}
-            >
-              {paying ? 'Processing…' : 'Simulator: Complete Instant Test Payment'}
-            </button>
+
           </div>
 
           <div style={{ marginTop: 24, textAlign: 'center', fontSize: 12, color: '#737970', lineHeight: 1.5 }}>
