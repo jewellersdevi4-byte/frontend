@@ -539,6 +539,8 @@ export default function CustomerPortal() {
   const isScheme3 = Boolean(currentAcc && (currentAcc.scheme_name.toLowerCase().includes('making charges') || currentAcc.rules.makingTerms?.includes('25%')));
   const isScheme1 = Boolean(currentAcc && (currentAcc.scheme_name.toLowerCase().includes('adrushta') || currentAcc.scheme_name.toLowerCase().includes('lucky draw')));
   const isScheme2 = Boolean(currentAcc && !isScheme1 && !isScheme3 && !isScheme4 && !isScheme5);
+  const monthlyInstalmentPaise = currentAcc?.instalments?.[0]?.amount || currentAcc?.rules?.amount || '10000';
+  const sharesCount = isScheme1 ? Math.max(1, Math.round(Number(monthlyInstalmentPaise) / 10000)) : 1;
   const progressPct = totalCount ? Math.round((paidCount / totalCount) * 100) : 0;
 
   return (
@@ -618,7 +620,7 @@ export default function CustomerPortal() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
                 <span className="badge badge-gold">
-                  {currentAcc.scheme_name}
+                  {currentAcc.scheme_name}{isScheme1 ? ` · ${sharesCount} ${lang === 'kn' ? 'ಷೇರುಗಳು' : 'Shares'} (${money(monthlyInstalmentPaise)}/${lang === 'kn' ? 'ತಿಂಗಳು' : 'mo'})` : ''}
                 </span>
                 <p style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
                   Account: <strong>{currentAcc.number}</strong>
@@ -765,7 +767,7 @@ export default function CustomerPortal() {
                     ? (BigInt(currentAcc.totalPaid) > 0n ? '5000' : '5000')
                     : (BigInt(currentAcc.dueNow) > 0n 
                       ? (Number(currentAcc.dueNow) / 100).toString() 
-                      : (Number(currentAcc.rules.amount) / 100).toString());
+                      : (Number(monthlyInstalmentPaise) / 100).toString());
                   setManualAmount(defaultAmt);
                   setShowOnlineModal(true);
                 }}
@@ -780,7 +782,7 @@ export default function CustomerPortal() {
                     ? (BigInt(currentAcc.totalPaid) > 0n ? '5000' : '5000')
                     : (BigInt(currentAcc.dueNow) > 0n 
                       ? (Number(currentAcc.dueNow) / 100).toString() 
-                      : (Number(currentAcc.rules.amount) / 100).toString());
+                      : (Number(monthlyInstalmentPaise) / 100).toString());
                   setManualAmount(defaultAmt);
                   setShowManualModal(true);
                 }}
@@ -914,8 +916,16 @@ export default function CustomerPortal() {
               ) : isScheme1 ? (
                 <div style={{ background: '#fcfbf8', border: '1px solid #ebd9a8', borderRadius: 8, padding: 14, marginBottom: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? '೧ ಷೇರು ಬೆಲೆ' : 'Price per Share'}</span>
+                    <strong>₹100 / {lang === 'kn' ? 'ತಿಂಗಳು (ಒಟ್ಟು 12 ತಿಂಗಳು)' : 'month (12 Months)'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14, color: 'var(--primary)' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ನಿಮ್ಮ ಒಟ್ಟು ಷೇರುಗಳು' : 'Your Enrolled Shares'}</span>
+                    <strong>{sharesCount} {lang === 'kn' ? 'ಷೇರುಗಳು' : 'shares'} ({money(monthlyInstalmentPaise)}/{lang === 'kn' ? 'ತಿಂಗಳು' : 'month'})</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
                     <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ಮಾಸಿಕ ಕಂತು' : 'Monthly Instalment'}</span>
-                    <strong>₹1,000 / {lang === 'kn' ? 'ತಿಂಗಳು (ಒಟ್ಟು 12 ತಿಂಗಳು)' : 'month (12 Months)'}</strong>
+                    <strong>{money(monthlyInstalmentPaise)} / {lang === 'kn' ? 'ತಿಂಗಳು' : 'month'}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0e6ce', fontSize: 14 }}>
                     <span style={{ color: 'var(--text-muted)' }}>{lang === 'kn' ? 'ಪಾವತಿ ಅಂತಿಮ ದಿನಾಂಕ' : 'Due Date'}</span>
