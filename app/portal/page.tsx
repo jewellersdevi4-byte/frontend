@@ -291,8 +291,19 @@ export default function CustomerPortal() {
           name: shop.shopName,
           description: `${data.schemeName} (${data.accountNumber})`,
           order_id: data.providerOrderId || undefined,
+          modal: {
+            ondismiss: function () {
+              setBusy(false);
+              setError(lang === 'kn' ? 'ಪಾವತಿ ರದ್ದುಗೊಂಡಿದೆ.' : 'Payment was cancelled: Razorpay modal closed.');
+            }
+          },
           handler: async function (response: any) {
-            await confirmOnlinePayment(data.linkId, response.razorpay_payment_id, response.razorpay_order_id);
+            await confirmOnlinePayment(
+              data.linkId,
+              response.razorpay_payment_id,
+              response.razorpay_order_id,
+              response.razorpay_signature
+            );
           },
           prefill: {
             name: data.customerName,
@@ -315,7 +326,12 @@ export default function CustomerPortal() {
     }
   }
 
-  async function confirmOnlinePayment(linkId: string, providerPaymentId: string, providerOrderId?: string) {
+  async function confirmOnlinePayment(
+    linkId: string,
+    providerPaymentId: string,
+    providerOrderId?: string,
+    signature?: string
+  ) {
     try {
       const res = await fetch('/api/v1/customer-portal/complete-online-payment', {
         method: 'POST',
@@ -326,7 +342,8 @@ export default function CustomerPortal() {
         body: JSON.stringify({
           linkId,
           providerPaymentId,
-          providerOrderId
+          providerOrderId,
+          signature
         })
       });
       const result = await res.json();

@@ -74,13 +74,39 @@ export default function PayPage() {
         name: 'Devi Jewellers, Kaup',
         description: `${data.schemeName} (${data.accountNumber})`,
         order_id: data.providerOrderId || undefined,
+        modal: {
+          ondismiss: function () {
+            setPaying(false);
+            setError('Payment cancelled: Razorpay modal closed by user.');
+          }
+        },
         handler: async function (response: any) {
-          // Send to webhook / test-pay or show confirmation
-          setPaid(true);
-          setPaymentResult({
-            paymentId: response.razorpay_payment_id,
-            orderId: response.razorpay_order_id,
-          });
+          try {
+            const verifyRes = await fetch('/api/verify-payment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                linkId: data.linkId
+              })
+            });
+            const verifyData = await verifyRes.json();
+            if (!verifyRes.ok || !verifyData.success) {
+              throw new Error(verifyData.error || 'Payment signature verification failed');
+            }
+            setPaid(true);
+            setPaymentResult({
+              providerPaymentId: response.razorpay_payment_id,
+              providerOrderId: response.razorpay_order_id,
+              receipt: verifyData.receipt
+            });
+          } catch (err: any) {
+            setError(err.message || 'Payment verification failed');
+          } finally {
+            setPaying(false);
+          }
         },
         prefill: {
           name: data.customerName,
