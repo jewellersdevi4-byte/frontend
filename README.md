@@ -121,3 +121,13 @@ git remote add origin https://github.com/<your-org>/devi_frontend.git
 git branch -M main
 git push -u origin main
 ```
+
+### Customer payment alerts
+
+Owners and staff can enable payment alerts from the workspace header. The browser
+checks the authenticated payments ledger every 15 seconds while the workspace is
+open and plays a short sound plus a browser notification for each newly confirmed,
+non-reversed payment. The first check records a baseline so older ledger entries do
+not trigger alerts. Browser notification permission and a user click are required
+to unlock notification audio. Alerts are foreground polling; they do not run when
+the browser is closed or suspended.

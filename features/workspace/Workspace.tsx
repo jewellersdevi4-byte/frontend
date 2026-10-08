@@ -22,6 +22,8 @@ import { WorkspaceHeading } from "./components/WorkspaceHeading";
 import { WorkspaceModal } from "./components/WorkspaceModal";
 import { WorkspaceSidebar } from "./components/WorkspaceSidebar";
 import { useWorkspace } from "./hooks/useWorkspace";
+import { usePaymentAlerts } from "./hooks/usePaymentAlerts";
+import { Bell } from "lucide-react";
 export default function Workspace() {
   const {
     checking,
@@ -70,6 +72,7 @@ export default function Workspace() {
     customers,
     accounts,
   } = useWorkspace();
+  const paymentAlerts = usePaymentAlerts(user?.id);
   if (checking) return <LoadingScreen />;
   if (!user)
     return (
@@ -111,6 +114,15 @@ export default function Workspace() {
         <header className="topbar">
           <span>Devi Jewellers / {page}</span>
           <div className="avatar">
+            <button
+              className="button"
+              onClick={() => void paymentAlerts.enable()}
+              aria-label="Enable payment notification sound"
+              title="Enable sound and browser notifications for new customer payments"
+            >
+              <Bell size={15} />
+              {paymentAlerts.enabled ? "Payment alerts on" : "Enable payment alerts"}
+            </button>
             <span>
               {new Date().toLocaleDateString("en-IN", {
                 day: "numeric",
