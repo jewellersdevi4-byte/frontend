@@ -1,0 +1,115 @@
+@media (max-width: 1000px) {
+  .sidebar {
+    width: 195px;
+    padding: 25px 12px;
+  }
+  .workspace {
+    margin-left: 195px;
+  }
+  .main {
+    padding: 26px 22px;
+  }
+  .stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .topbar {
+    padding: 0 22px;
+  }
+  .two-col {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 700px) {
+  .sidebar {
+    position: relative;
+    width: 100%;
+    padding: 15px;
+  }
+  .brand {
+    padding: 0 0 12px;
+    margin-bottom: 12px;
+  }
+  .sidebar nav {
+    display: flex;
+    overflow: auto;
+  }
+  .sidebar button {
+    white-space: nowrap;
+    font-size: 12px;
+    padding: 10px;
+  }
+  .sidebar .bottom {
+    display: none;
+  }
+  .shell {
+    display: block;
+  }
+  .workspace {
+    margin-left: 0;
+  }
+  .topbar {
+    height: 56px;
+    padding: 0 18px;
+  }
+  .main {
+    padding: 22px 16px;
+  }
+  .heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  h1 {
+    font-size: 29px;
+  }
+  .stat {
+    padding: 18px;
+  }
+  .stat strong {
+    font-size: 26px;
+  }
+  .card {
+    padding: 18px;
+  }
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .login {
+    display: block;
+  }
+  .login-art img {
+    max-height: 260px;
+    object-fit: contain;
+  }
+  .login-art p {
+    display: none;
+  }
+  .modal {
+    padding: 20px;
+    max-height: 94vh;
+  }
+  .overlay {
+    padding: 10px;
+  }
+  .key-value {
+    grid-template-columns: 1fr;
+  }
+  .topbar span {
+    font-size: 11px;
+  }
+}
+@media print {
+  .sidebar,
+  .topbar,
+  .actions {
+    display: none;
+  }
+  .workspace {
+    margin: 0;
+  }
+  .main {
+    padding: 0;
+  }
+}
