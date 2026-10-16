@@ -24,6 +24,7 @@ import { WorkspaceSidebar } from "./components/WorkspaceSidebar";
 import { useWorkspace } from "./hooks/useWorkspace";
 import { usePaymentAlerts } from "./hooks/usePaymentAlerts";
 import { Bell } from "lucide-react";
+import { PlatformWorkspace } from "../platform/PlatformWorkspace";
 export default function Workspace() {
   const {
     checking,
@@ -84,6 +85,8 @@ export default function Workspace() {
         busy={busy}
       />
     );
+  if (user.role === "platform_admin")
+    return <PlatformWorkspace user={user as any} setUser={setUser} />;
   if (user.mustChangePassword)
     return (
       <ChangePasswordScreen

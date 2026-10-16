@@ -86,7 +86,7 @@ export function useWorkspace() {
     }
   }
   useEffect(() => {
-    if (user) {
+    if (user && user.role !== "platform_admin") {
       setData(null);
       void load();
     }

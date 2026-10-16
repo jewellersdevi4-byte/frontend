@@ -43,9 +43,9 @@ export function LoginScreen({
           }
         }}
       >
-        <div className="eyebrow">OWNER & STAFF WORKSPACE</div>
+        <div className="eyebrow">MASTER ADMIN · SHOP OWNER · STAFF</div>
         <h1>Welcome back.</h1>
-        <p className="muted">Sign in to manage your customers and schemes.</p>
+        <p className="muted">Sign in to manage the platform or your shop workspace.</p>
         <label htmlFor="username">Username</label>
         <input id="username" name="username" autoComplete="username" required />
         <label htmlFor="password">Password</label>
@@ -61,7 +61,7 @@ export function LoginScreen({
           {busy ? "Signing in…" : "Sign in"} <ArrowUpRight size={16} />
         </button>
         <p className="muted" style={{ fontSize: 12, marginTop: 28 }}>
-          Devi Jewellers · Authorised branch workspace
+          Devi Jewellers · Authorised workspace
           <br />
           This workspace is for authorised shop staff.
         </p>
