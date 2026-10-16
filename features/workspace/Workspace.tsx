@@ -109,10 +109,11 @@ export default function Workspace() {
         action={action}
         setUser={setUser}
         setData={setData}
+          user={user}
       />
       <div className="workspace">
         <header className="topbar">
-          <span>Devi Jewellers / {page}</span>
+          <span>Devi Jewellers / {user.branchName || "Kaup"} / {page}</span>
           <div className="avatar">
             <button
               className="button"

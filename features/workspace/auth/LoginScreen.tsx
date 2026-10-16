@@ -61,7 +61,7 @@ export function LoginScreen({
           {busy ? "Signing in…" : "Sign in"} <ArrowUpRight size={16} />
         </button>
         <p className="muted" style={{ fontSize: 12, marginTop: 28 }}>
-          Devi Jewellers · Main Road, Kaup
+          Devi Jewellers · Authorised branch workspace
           <br />
           This workspace is for authorised shop staff.
         </p>

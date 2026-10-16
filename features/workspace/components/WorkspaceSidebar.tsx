@@ -15,6 +15,7 @@ type Props = Pick<
   | "action"
   | "setUser"
   | "setData"
+  | "user"
 >;
 export function WorkspaceSidebar({
   owner,
@@ -27,12 +28,13 @@ export function WorkspaceSidebar({
   action,
   setUser,
   setData,
+  user,
 }: Props) {
   return (
     <aside className="sidebar">
       <div className="brand">
         <strong>Devi Jewellers</strong>
-        <small>KAUP · SCHEME MANAGER</small>
+        <small>{(user?.branchName || "Kaup").toUpperCase()} · SCHEME MANAGER</small>
       </div>
       <nav>
         {nav
