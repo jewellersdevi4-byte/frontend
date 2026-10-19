@@ -25,13 +25,25 @@ export function usePaymentAlerts(userId?: string) {
     if (!userId) return;
     setPermission(typeof Notification === "undefined" ? "denied" : Notification.permission);
     const key = `devi_payment_alert_ids_${userId}`;
-    const saved = localStorage.getItem(key);
-    if (saved) seen.current = new Set(JSON.parse(saved));
+    seen.current = new Set();
+    initialized.current = false;
+    try {
+      const saved = JSON.parse(localStorage.getItem(key) || "[]");
+      if (Array.isArray(saved)) seen.current = new Set(saved);
+    } catch { /* Storage may be unavailable or contain an interrupted write. */ }
+    const persistSeen = () => {
+      seen.current = new Set([...seen.current].slice(-300));
+      try { localStorage.setItem(key, JSON.stringify([...seen.current])); } catch {}
+    };
 
     let active = true;
+    let inFlight = false;
+    const controller = new AbortController();
     const check = async () => {
+      if (inFlight || !active) return;
+      inFlight = true;
       try {
-        const payments: Row[] = await api("/payments");
+        const payments: Row[] = await api("/payments/alerts", "GET", undefined, undefined, controller.signal);
         if (!active) return;
         const ordered = [...payments].sort(
           (a, b) => Date.parse(a.created_at) - Date.parse(b.created_at),
@@ -39,7 +51,7 @@ export function usePaymentAlerts(userId?: string) {
         if (!initialized.current && !seen.current.size) {
           seen.current = new Set(ordered.map((payment) => payment.id));
           initialized.current = true;
-          localStorage.setItem(key, JSON.stringify([...seen.current].slice(-300)));
+          persistSeen();
           return;
         }
         initialized.current = true;
@@ -49,7 +61,7 @@ export function usePaymentAlerts(userId?: string) {
           if (payment.reversal_reason) continue;
 
           const message = `${payment.customer_name} paid ${money(payment.amount)} on ${paymentDate(payment.payment_date)}.`;
-          if (Notification.permission === "granted") {
+          if (typeof Notification !== "undefined" && Notification.permission === "granted") {
             new Notification("Customer payment received", { body: message, tag: payment.id });
           }
           if (audio.current?.state === "running") {
@@ -70,16 +82,17 @@ export function usePaymentAlerts(userId?: string) {
             }
           }
         }
-        localStorage.setItem(key, JSON.stringify([...seen.current].slice(-300)));
+        persistSeen();
       } catch {
         // Keep the last seen IDs so a temporary outage does not create false alerts.
-      }
+      } finally { inFlight = false; }
     };
 
     void check();
     const timer = window.setInterval(check, POLL_INTERVAL_MS);
     return () => {
       active = false;
+      controller.abort();
       window.clearInterval(timer);
     };
   }, [userId]);

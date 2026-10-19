@@ -73,7 +73,7 @@ export default function Workspace() {
     customers,
     accounts,
   } = useWorkspace();
-  const paymentAlerts = usePaymentAlerts(user?.id);
+  const paymentAlerts = usePaymentAlerts(user?.role === "platform_admin" ? undefined : user?.id);
   if (checking) return <LoadingScreen />;
   if (!user)
     return (

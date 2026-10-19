@@ -79,7 +79,7 @@ export function DashboardView({
               </button>
             </div>
           )}
-          {data.adapter !== "meta" && (
+          {data.adapter === "test" && (
             <div className="banner">
               WhatsApp is in isolated test mode. Test messages are never
               delivered through WhatsApp.

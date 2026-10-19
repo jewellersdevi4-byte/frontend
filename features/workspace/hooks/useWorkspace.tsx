@@ -1,5 +1,5 @@
 "use client";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { Badge } from "../../../components/ui/Badge";
 import { api } from "../../../lib/api";
 import { day, money } from "../../../lib/format";
@@ -27,6 +27,11 @@ export function useWorkspace() {
     [report, setReport] = useState("daily"),
     [from, setFrom] = useState(day().slice(0, 7) + "-01"),
     [to, setTo] = useState(day());
+  const request = useRef<AbortController | null>(null);
+  const detailRequest = useRef<AbortController | null>(null);
+  const activeView = useRef("");
+  const viewKey = `${user?.id || ""}:${page}:${report}:${from}:${to}`;
+  activeView.current = viewKey;
   const data = loaded?.page === page ? loaded.value : null;
   function setData(value: any) {
     setLoaded(value === null ? null : { page, value });
@@ -57,6 +62,10 @@ export function useWorkspace() {
     }
   }, [user]);
   async function load() {
+    request.current?.abort();
+    const controller = new AbortController();
+    request.current = controller;
+    const currentView = viewKey;
     setLoading(true);
     setError("");
     try {
@@ -75,14 +84,19 @@ export function useWorkspace() {
         Staff: "/staff",
         "Audit log": "/audit",
       };
-      setData(await api(urls[page]));
-      if (page === "Customers" && customer)
-        setCustomer(await api("/customers/" + customer.id));
-      if (account) setAccount(await api("/accounts/" + account.id));
+      const [value, nextCustomer, nextAccount] = await Promise.all([
+        api(urls[page], "GET", undefined, undefined, controller.signal),
+        page === "Customers" && customer ? api("/customers/" + customer.id, "GET", undefined, undefined, controller.signal) : null,
+        account ? api("/accounts/" + account.id, "GET", undefined, undefined, controller.signal) : null,
+      ]);
+      if (controller.signal.aborted || activeView.current !== currentView) return;
+      setData(value);
+      if (nextCustomer) setCustomer(nextCustomer);
+      if (nextAccount) setAccount(nextAccount);
     } catch (e: any) {
-      setError(e.message);
+      if (!controller.signal.aborted && activeView.current === currentView) setError(e.message);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted && activeView.current === currentView) setLoading(false);
     }
   }
   useEffect(() => {
@@ -90,27 +104,37 @@ export function useWorkspace() {
       setData(null);
       void load();
     }
+    return () => { request.current?.abort(); detailRequest.current?.abort(); };
   }, [user, page, report, from, to]);
   useEffect(() => {
-    if (page !== "WhatsApp" || data?.status === "connected") return;
-    const timer = setInterval(() => {
-      api("/whatsapp/status")
-        .then(setData)
-        .catch(() => {});
-    }, 3000);
-    return () => clearInterval(timer);
-  }, [page, data?.status]);
-  async function options() {
+    if (!user || page !== "WhatsApp") return;
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout>;
+    async function poll() {
+      if (controller.signal.aborted) return;
+      if (document.visibilityState === "visible") {
+        try {
+          const value = await api("/whatsapp/status", "GET", undefined, undefined, controller.signal);
+          if (!controller.signal.aborted) setData(value);
+        } catch { /* Keep the last known state during transient outages. */ }
+      }
+      if (!controller.signal.aborted) timer = setTimeout(poll, 3000);
+    }
+    timer = setTimeout(poll, 3000);
+    return () => { controller.abort(); clearTimeout(timer); };
+  }, [user, page]);
+  async function options(type?: string) {
+    const needs = (types: string[]) => !type || types.includes(type);
     const [s, c, a, r] = await Promise.all([
-      api("/schemes"),
-      api("/customers"),
-      api("/accounts"),
-      api("/rates"),
+      needs(["customer", "enrol"]) ? api("/schemes") : null,
+      needs(["enrol"]) ? api("/customers") : null,
+      needs(["payment", "approveProof"]) ? api("/accounts") : null,
+      needs(["customer", "enrol", "redeem"]) ? api("/rates") : null,
     ]);
-    setSchemes(s);
-    setCustomers(c);
-    setAccounts(a);
-    setRates(r);
+    if (s) setSchemes(s);
+    if (c) setCustomers(c);
+    if (a) setAccounts(a);
+    if (r) setRates(r);
   }
   async function open(type: string, extra: Row = {}) {
     setError("");
@@ -127,7 +151,7 @@ export function useWorkspace() {
           "approveProof",
         ].includes(type)
       )
-        await options();
+        await options(type);
       setModal({ type, ...extra });
     } catch (e: any) {
       setError(e.message);
@@ -148,27 +172,27 @@ export function useWorkspace() {
     load,
     write,
   });
-  async function selectCustomer(c: Row) {
+  async function selectDetail(kind: "customers" | "accounts", id: string) {
+    detailRequest.current?.abort();
+    request.current?.abort();
+    const controller = new AbortController();
+    detailRequest.current = controller;
+    const currentView = viewKey;
     setLoading(true);
+    setError("");
     try {
-      setCustomer(await api("/customers/" + c.id));
-      setAccount(null);
+      const value = await api(`/${kind}/${id}`, "GET", undefined, undefined, controller.signal);
+      if (controller.signal.aborted || activeView.current !== currentView) return;
+      if (kind === "customers") { setCustomer(value); setAccount(null); }
+      else setAccount(value);
     } catch (e: any) {
-      setError(e.message);
+      if (!controller.signal.aborted && activeView.current === currentView) setError(e.message);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted && activeView.current === currentView) setLoading(false);
     }
   }
-  async function selectAccount(a: Row) {
-    setLoading(true);
-    try {
-      setAccount(await api("/accounts/" + a.id));
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
-  }
+  async function selectCustomer(c: Row) { await selectDetail("customers", c.id); }
+  async function selectAccount(a: Row) { await selectDetail("accounts", a.id); }
   async function selectConversation(c: Row) {
     try {
       setConversation(await api("/inbox/" + c.id));
