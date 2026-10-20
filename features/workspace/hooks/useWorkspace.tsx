@@ -1,15 +1,16 @@
 "use client";
-import { ReactNode, useEffect, useRef, useState } from "react";
+import { Dispatch, ReactNode, SetStateAction, useEffect, useRef, useState } from "react";
 import { Badge } from "../../../components/ui/Badge";
 import { api } from "../../../lib/api";
 import { day, money } from "../../../lib/format";
 import { createSubmissionHandler } from "../actions/createSubmissionHandler";
 import type { Row } from "../../../lib/types";
 import { usePendingSubmission } from "./usePendingSubmission";
+import { nav } from "../navigation";
 export function useWorkspace() {
   const [user, setUser] = useState<Row | null>(null),
     [checking, setChecking] = useState(true),
-    [page, setPage] = useState("Dashboard"),
+    [page, setPageState] = useState("Dashboard"),
     [loaded, setLoaded] = useState<any>(null),
     [loading, setLoading] = useState(false),
     [error, setError] = useState(""),
@@ -27,6 +28,16 @@ export function useWorkspace() {
     [report, setReport] = useState("daily"),
     [from, setFrom] = useState(day().slice(0, 7) + "-01"),
     [to, setTo] = useState(day());
+  const pageRef = useRef(page);
+  pageRef.current = page;
+  const setPage: Dispatch<SetStateAction<string>> = (next) => {
+    const value = typeof next === "function" ? next(pageRef.current) : next;
+    pageRef.current = value;
+    setPageState(value);
+    if (user && user.role !== "platform_admin") {
+      try { localStorage.setItem(`devi_workspace_page_${user.id}`, value); } catch {}
+    }
+  };
   const request = useRef<AbortController | null>(null);
   const detailRequest = useRef<AbortController | null>(null);
   const activeView = useRef("");
@@ -101,6 +112,15 @@ export function useWorkspace() {
   }
   useEffect(() => {
     if (user && user.role !== "platform_admin") {
+      const allowedPages = nav
+        .filter(([name]) => user.role === "owner" || !["WhatsApp", "Settings", "Staff", "Audit log"].includes(name))
+        .map(([name]) => name as string);
+      let savedPage = "";
+      try { savedPage = localStorage.getItem(`devi_workspace_page_${user.id}`) || ""; } catch {}
+      if (allowedPages.includes(savedPage) && savedPage !== page) {
+        setPage(savedPage);
+        return;
+      }
       setData(null);
       void load();
     }
