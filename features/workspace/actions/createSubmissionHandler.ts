@@ -75,24 +75,26 @@ export function createSubmissionHandler({
             ...(schemeAccount ? { schemeAccount } : {}),
           },
         );
+        const customerRecord = result?.customer || result;
         if (result.account) {
-          setCustomer(result.customer);
+          setCustomer(customerRecord);
           setAccount(result.account);
           setPage("Customers");
           setSuccess(
             "Registered customer " +
-              result.customer.name +
+              (customerRecord?.name || result?.name || "") +
               " and created account " +
-              result.account.number +
+              (result.account?.number || "") +
               "." +
               (result.receipt
                 ? " Receipt " + result.receipt.number + " issued."
                 : ""),
           );
         } else if (modal?.record) {
-          setCustomer(result.customer || result);
+          setCustomer(customerRecord);
           setSuccess("Customer updated successfully.");
         } else {
+          setCustomer(customerRecord);
           setSuccess("Customer saved successfully.");
         }
       }
