@@ -41,7 +41,7 @@ export function WorkspaceSidebar({
           .filter(
             ([n]) =>
               owner ||
-              !["WhatsApp", "Settings", "Staff", "Audit log"].includes(n),
+              !["WhatsApp", "Settings", "Staff"].includes(n),
           )
           .map(([name, Icon]) => (
             <button

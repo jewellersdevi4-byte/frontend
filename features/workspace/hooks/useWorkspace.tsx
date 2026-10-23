@@ -93,7 +93,6 @@ export function useWorkspace() {
         Reports: `/reports/${report}?from=${from}&to=${to}`,
         Settings: "/settings",
         Staff: "/staff",
-        "Audit log": "/audit",
       };
       const [value, nextCustomer, nextAccount] = await Promise.all([
         api(urls[page], "GET", undefined, undefined, controller.signal),
@@ -113,7 +112,7 @@ export function useWorkspace() {
   useEffect(() => {
     if (user && user.role !== "platform_admin") {
       const allowedPages = nav
-        .filter(([name]) => user.role === "owner" || !["WhatsApp", "Settings", "Staff", "Audit log"].includes(name))
+        .filter(([name]) => user.role === "owner" || !["WhatsApp", "Settings", "Staff"].includes(name))
         .map(([name]) => name as string);
       let savedPage = "";
       try { savedPage = localStorage.getItem(`devi_workspace_page_${user.id}`) || ""; } catch {}

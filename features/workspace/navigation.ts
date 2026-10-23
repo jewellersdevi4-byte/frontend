@@ -1,6 +1,5 @@
 import {
   BarChart3,
-  FileText,
   Layers,
   LayoutDashboard,
   MessageCircle,
@@ -26,5 +25,4 @@ export const nav = [
   ["Reports", BarChart3],
   ["Settings", Settings],
   ["Staff", ShieldCheck],
-  ["Audit log", FileText],
 ] as const;

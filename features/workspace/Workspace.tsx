@@ -1,7 +1,6 @@
 "use client";
 import { api } from "../../lib/api";
 import { AccountDetailsView } from "./views/AccountDetailsView";
-import { AuditLogView } from "./views/AuditLogView";
 import { ChangePasswordScreen } from "./auth/ChangePasswordScreen";
 import { CustomerDetailsView } from "./views/CustomerDetailsView";
 import { CustomersView } from "./views/CustomersView";
@@ -298,7 +297,6 @@ export default function Workspace() {
           }
           {<SettingsView page={page} data={data} busy={busy} action={action} />}
           {<StaffView page={page} data={data} busy={busy} open={open} />}
-          {<AuditLogView page={page} data={data} />}
         </main>
       </div>
       {
